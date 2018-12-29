@@ -1,10 +1,10 @@
 #include "FastLED.h"          // библиотека для работы с лентой
 
-#define LED_COUNT 30          // число светодиодов в кольце/ленте
+#define LED_COUNT 150          // число светодиодов в кольце/ленте
 #define LED_DT 13             // пин, куда подключен DIN ленты
 #define PHOTO_SENSOR 2
 
-#define MAX_BRIGHT 100       // максимальная яркость (0 - 255)
+#define MAX_BRIGHT 255       // максимальная яркость (0 - 255)
 #define ADAPT_LIGHT          // адаптивная подсветка
 
 struct CRGB leds[LED_COUNT];
@@ -18,16 +18,11 @@ int check() {
 #ifdef ADAPT_LIGHT
     int new_bright = 0x01|map(analogRead(PHOTO_SENSOR), 1, 1023, 5, MAX_BRIGHT);   // считать показания с фоторезистора, перевести диапазон
     LEDS.setBrightness(new_bright);        // установить новую яркость
-    Serial.print("bright:");
-    Serial.println(new_bright);
+//    Serial.print("bright:");
+//    Serial.println(new_bright);
 #endif
 
     return now < time2exit;
-}
-
-void one_color_all(int cred, int cgrn, int cblu) {       //-SET ALL LEDS TO ONE COLOR
-    for (int i = 0; i < LED_COUNT; i++)
-        leds[i].setRGB(cred, cgrn, cblu);
 }
 
 // плавная смена цветов всей ленты
@@ -35,11 +30,11 @@ void rainbow_fade() {                         //-m2-FADE ALL LEDS THROUGH HSV RA
     int thisdelay = random(0, 100);
     char ihue;
     while (check()) {
-        for (char i = 0; i < LED_COUNT; i++)
+        for (int i = 0; i < LED_COUNT; i++)
             leds[i] = CHSV(ihue, 255, 255);
         LEDS.show();
         delay(thisdelay);
-        ihue=(ihue+1);
+        ihue++;
     }
 }
 
@@ -50,11 +45,11 @@ void rainbow_loop() {                        //-m3-LOOP HSV RAINBOW
     int inc = random(1, 10);
     int ihue;
     while (check()) {
-        for (int idex = 0; idex < LED_COUNT; idex++) {
-            leds[idex] = CHSV(ihue, 255, 255);
+        for (int i = 0; i < LED_COUNT; i++) {
+            leds[i] = CHSV(ihue, 255, 255);
             LEDS.show();
             delay(thisdelay);
-            ihue = (ihue + inc) & 0xff;
+            ihue = (ihue + inc)&0xff;
         }
         delay(thisdelay2);
     }
@@ -62,11 +57,10 @@ void rainbow_loop() {                        //-m3-LOOP HSV RAINBOW
 
 // случайная смена цветов
 void random_burst() {                         //-m4-RANDOM INDEX/COLOR
-    char thisdelay = random(0, 100);
+    int thisdelay = random(0, 100);
     while (check()) {
-        char idex = random(0, LED_COUNT);
-        char ihue = random(0, 255);
-        leds[idex] = CHSV(ihue, 255, 255);
+        //int ihue = random(0, 255);
+        leds[random(0, LED_COUNT)] = CHSV(random(0, 255), 255, 255);
         LEDS.show();
         delay(thisdelay);
     }
@@ -88,18 +82,18 @@ void rol() {
 
 // бегающий паровозик светодиодов
 void color_bounceFADE() {
-    char thisdelay = random(0, 100);
-    char thishue = random(0, 255);
-    char cnt = random(1, 9);
-    for (int16_t i = 1; i <= cnt; i++)
+    int thisdelay = random(0, 100);
+    int thishue = random(0, 255);
+    int cnt = random(1, 9);
+    for (int i = 1; i <= cnt; i++)
         leds[i - 1] = CHSV(thishue, 255, 255 - 2 * abs(i * 255 / (cnt + 1) - 127));
     while (check()) {
-        for (char i = 0; i < LED_COUNT - cnt; i++) {
+        for (int i = 0; i < LED_COUNT - cnt; i++) {
             ror();
             LEDS.show();
             delay(thisdelay);
         }
-        for (char i = 0; i < LED_COUNT - cnt; i++) {
+        for (int i = 0; i < LED_COUNT - cnt; i++) {
             rol();
             LEDS.show();
             delay(thisdelay);
@@ -110,20 +104,21 @@ void color_bounceFADE() {
 // вращается несколько цветов сплошные или одиночные
 // вращается половина красных и половина синих
 void ems_lightsALL() {                    //-m7-EMERGENCY LIGHTS (TWO COLOR SINGLE LED)
-    char thisdelay = random(0, 100);
+    int thisdelay = random(0, 100);
     char cnt = random(1, LED_COUNT / 10 + 1);
     char mode = random(0, 2);
+    char dir = random(0, 2);
     for (char i = 0; i < cnt; i++) {
-        char thishue = random(0, 255);
-        for (char n = 0; n < LED_COUNT / cnt; n++) {
-            if (mode || !n)leds[0] = CHSV(thishue, 255, 255);
-            ror();
+        for (int n = 0; n < LED_COUNT / cnt; n++) {
+            if (mode || !n) leds[0] = CHSV(random(0, 255), 255, 255);
+            if (dir) ror(); else rol();
             LEDS.show();
             delay(thisdelay);
         }
     }
+  Serial.println("while");
     while (check()) {
-        ror();
+        if (dir) ror(); else rol();
         LEDS.show();
         delay(thisdelay);
     }
@@ -364,7 +359,7 @@ void ems_lightsSTROBE() {                  //-m26-EMERGENCY LIGHTS (STROBE LEFT/
                 leds[i] = CHSV(0, 255, 255);
             LEDS.show();
             delay(25);
-            one_color_all(0, 0, 0);
+            memset(leds, 0, sizeof(leds));
             LEDS.show();
             delay(25);
         }
@@ -373,7 +368,7 @@ void ems_lightsSTROBE() {                  //-m26-EMERGENCY LIGHTS (STROBE LEFT/
                 leds[i] = CHSV(160, 255, 255);
             LEDS.show();
             delay(25);
-            one_color_all(0, 0, 0);
+            memset(leds,0,sizeof(leds));
             LEDS.show();
             delay(25);
         }
