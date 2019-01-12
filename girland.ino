@@ -68,13 +68,19 @@ void rol() {
 }
 
 // плавная смена цветов всей ленты
-void rainbow_fade(int thisdelay) {                         //-m2-FADE ALL LEDS THROUGH HSV RAINBOW
-    uint8_t ihue;
+void rainbow_fade(int thisdelay, int thishue) {                         //-m2-FADE ALL LEDS THROUGH HSV RAINBOW
+    uint8_t h=random8(0,3);
+    uint8_t s=random8(0,3);
+    uint8_t v=random8(0,3);
+    uint8_t sat;
+    uint8_t val;
     while (check()) {
         for (int i = 0; i < LED_COUNT; i++)
-            leds[i] = CHSV(ihue, 255, 255);
+            leds[i] = CHSV((uint8_t)thishue, triwave8(sat), triwave8(val));
         show(thisdelay);
-        ihue++;
+        thishue=thishue+h;
+        sat+=s;
+        val+=v;
     }
 }
 
@@ -95,22 +101,6 @@ void rainbow_loop(int thisdelay, int mode) {                        //-m3-LOOP H
     }
 }
 
-//// крутящаяся радуга
-//void rainbow_loop(int thisdelay) {                        //-m3-LOOP HSV RAINBOW
-//    int thisdelay2 = random8(0, 100);
-//    int inc = random8(1, 10);
-//    int ihue;
-//    while (check()) {
-//        for (int i = 0; i < LED_COUNT; i++) {
-//            leds[i] = CHSV(ihue, 255, 255);
-//            show();
-//            delay(thisdelay);
-//            ihue = (ihue + inc)&0xff;
-//        }
-//        delay(thisdelay2);
-//    }
-//}
-
 // случайная смена цветов
 void random_burst(int thisdelay) {                         //-m4-RANDOM INDEX/COLOR
     while (check()) {
@@ -121,12 +111,13 @@ void random_burst(int thisdelay) {                         //-m4-RANDOM INDEX/CO
 
 // бегающий паровозик светодиодов
 void color_bounceFADE(int thisdelay, int thishue) {
-    int cnt = random8(1, 9);
-    for (int i = 1; i <= cnt; i++)
-        leds[i - 1] = CHSV(thishue, 255, 255 - 2 * abs(i * 255 / (cnt + 1) - 127));
-    int dir = 0;
+    memset8(leds, 0, sizeof(leds));
+    int cnt = random8(1, 10);
+    for (int i = 0; i < cnt; i++)
+        leds[i] = CHSV(thishue, 255, triwave8(i*255/cnt));
+    int dir = 1;
     while (check()) {
-        for (int i = 0; i < LED_COUNT - cnt; i++) {
+        for (int i = 0; i < LED_COUNT - cnt - 1; i++) {
             if (dir) ror(); else rol();
             show(thisdelay);
         }
@@ -136,8 +127,7 @@ void color_bounceFADE(int thisdelay, int thishue) {
 
 // вращается несколько цветов сплошные или одиночные
 // вращается половина красных и половина синих
-void
-ems_lightsALL(int thisdelay, int8_t mode, int8_t dir) {                    //-m7-EMERGENCY LIGHTS (TWO COLOR SINGLE LED)
+void ems_lightsALL(int thisdelay, int8_t mode, int8_t dir) {         //-m7-EMERGENCY LIGHTS (TWO COLOR SINGLE LED)
     int8_t cnt = random8(1, LED_COUNT / 10 + 1);
     for (int8_t i = 0; i < cnt; i++) {
         for (int n = 0; n < LED_COUNT / cnt; n++) {
@@ -168,56 +158,55 @@ void flicker() {                          //-m9-FLICKER EFFECT
     }
 }
 
-// пульсация со сменой цветов
-void pulse_one_color_all_rev(int thisdelay, int thishue) {              //-m10-PULSE BRIGHTNESS ON ALL LEDS TO ONE COLOR
-    int inc = random8(1, 10);
-    int mode = random8(1, 4);
-    int ibright;
-    while (check()) {
-        ibright = 0;
-        while (ibright >= 0) {
-            for (int idex = 0; idex < LED_COUNT; idex++)
-                switch (mode) {
-                    case 1:
-                        leds[idex] = CHSV(thishue, 255, ibright);
-                        break;
-                    case 2:
-                        leds[idex] = CHSV(thishue, ibright, 255);
-                        break;
-                    case 3:
-                        leds[idex] = CHSV(ibright, 255, 255);
-                        break;
-                }
-            show(thisdelay);
-            ibright += inc;
-            if (ibright > 255) {
-                inc = -inc;
-                ibright = 255;
-            }
-        }
-        inc = -inc;
-    }
-}
+//// пульсация со сменой цветов
+//void pulse_one_color_all_rev(int thisdelay, int thishue) {              //-m10-PULSE BRIGHTNESS ON ALL LEDS TO ONE COLOR
+//    int inc = random8(1, 10);
+//    int mode = random8(1, 4);
+//    int ibright;
+//    while (check()) {
+//        ibright = 0;
+//        while (ibright >= 0) {
+//            for (int idex = 0; idex < LED_COUNT; idex++)
+//                switch (mode) {
+//                    case 1:
+//                        leds[idex] = CHSV(thishue, 255, ibright);
+//                        break;
+//                    case 2:
+//                        leds[idex] = CHSV(thishue, ibright, 255);
+//                        break;
+//                    case 3:
+//                        leds[idex] = CHSV(ibright, 255, 255);
+//                        break;
+//                }
+//            show(thisdelay);
+//            ibright += inc;
+//            if (ibright > 255) {
+//                inc = -inc;
+//                ibright = 255;
+//            }
+//        }
+//        inc = -inc;
+//    }
+//}
 
 // плавная смена яркости по вертикали (для кольца)
 void fade_vertical(int thisdelay, int thishue) {                    //-m12-FADE 'UP' THE LOOP
-    int inc = random8(0, 10);
-    int ibright;
+    uint8_t inc = random8(2, 128);
+    uint8_t ibright;
     while (check()) {
         for (int i = 0; i < LED_COUNT / 2; i++) {
-            CHSV chsv(thishue, 255, ibright);
+            CHSV chsv(thishue, 255, triwave8(ibright));
             leds[i] = chsv;
             leds[LED_COUNT - 1 - i] = chsv;
             show(thisdelay);
-            ibright = (ibright + inc) & 0xFF;
+            ibright += inc;
         }
     }
 }
 
 // случайная смена цветов
 // безумие красных светодиодов
-void random_red(int thisdelay, int thishue,
-                int mode) {                       //QUICK 'N DIRTY RANDOMIZE TO GET CELL AUTOMATA STARTED
+void random_red(int thisdelay, int thishue, int mode) {         //QUICK 'N DIRTY RANDOMIZE TO GET CELL AUTOMATA STARTED
     int thissat = random8(0, 255);
     int dutty = random8(0, 100);
     while (check()) {
@@ -245,18 +234,15 @@ void random_march(int thisdelay, int mode) {                   //-m14-RANDOM MAR
 // пульсирует значок радиации
 void radiation(int thisdelay, int thishue, int mode) {                   //-m16-SORT OF RADIATION SYMBOLISH-
     int even = random8(0, 2);
-    int cnt = random8(1, LED_COUNT / 2);
-    int ibright;
+    int cnt = random8(1, 10);
+    uint8_t ibright;
     while (check()) {
         for (int i = 0; i < LED_COUNT; i++) {
-            int b = 255 - abs(ibright - 255);
-            if ((i / cnt) % 2 == even)
-                leds[i] = CHSV(thishue, 255, b);
+            if ((i*cnt/LED_COUNT) % 2 == even)
+                leds[i] = CHSV(thishue, 255, triwave8(ibright));
         }
         show(thisdelay);
-        ibright += 1;
-        if (ibright > 510) {
-            ibright = 0;
+        if (!++ibright) {
             if (mode) thishue = random8(0, 255);
         }
     }
@@ -279,18 +265,15 @@ void color_loop_vardelay(int thishue, int mode, int dir) {       //-m17-COLOR LO
 
 //переливы
 void sin_bright_wave(int thisdelay, int thishue, int mode) {        //-m19-BRIGHTNESS SINE WAVE
-    int inc = random8(25, 100);
-    int ibright;
+    uint8_t inc = random8(2, 128);
+    uint8_t ibright;
     while (check()) {
         for (int i = 0; i < LED_COUNT; i++) {
-            ibright += inc;
-            if (ibright > 510) {
-                ibright = 0;
-                if (mode) thishue = random8(0, 255);
-            }
-            int b = 255 - abs(ibright - 255);
+            uint8_t b = triwave8(ibright);
             leds[i] = CHSV(thishue, 255, b);
             show(thisdelay);
+            ibright += inc;
+            if (!b && mode) thishue = random8(0, 255);
         }
     }
 }
@@ -435,7 +418,7 @@ void colorWipe(int thisdelay, int thishue, int mode, int dir) {
 
 void setup() {
     Serial.begin(9600);              // открыть порт для связи
-    randomSeed(analogRead(0));
+    random16_set_seed(analogRead(0));
     LEDS.addLeds<WS2811, LED_DT, GRB>(leds, LED_COUNT);  // настрйоки для нашей ленты (ленты на WS2811, WS2812, WS2812B)
     LEDS.setBrightness(MAX_BRIGHT);        // установить новую яркость
 }
@@ -463,9 +446,8 @@ void loop() {
     Serial.println(dir);
     switch (effect) {
         case 0:
-            rainbow_fade(thisdelay);
+            rainbow_fade(thisdelay, thishue);
             break;
-//  case 1: rainbow_loop(thisdelay); break;
         case 1:
             rainbow_loop(thisdelay, mode);
             break;
@@ -473,16 +455,16 @@ void loop() {
             random_burst(thisdelay);
             break;
         case 3:
-            random_burst(thisdelay);
+            color_bounceFADE(thisdelay, thishue);
             break;
         case 4:
-            ems_lightsALL(thisdelay, mode, dir);
+            random_burst(thisdelay);
             break;
         case 5:
-            flicker();
+            ems_lightsALL(thisdelay, mode, dir);
             break;
         case 6:
-            pulse_one_color_all_rev(thisdelay, thishue);
+            flicker();
             break;
         case 7:
             fade_vertical(thisdelay, thishue);
@@ -520,7 +502,6 @@ void loop() {
         case 18:
             matrix(thisdelay, thishue, mode, dir);
             break;
-//  case 19: new_rainbow_loop(thisdelay); break;
         case 20:
             colorWipe(thisdelay, thishue, mode, dir);
             break;
@@ -536,4 +517,10 @@ void loop() {
 
 Скетч использует 9370 байт (30%) памяти устройства. Всего доступно 30720 байт.
 Глобальные переменные используют 813 байт (39%) динамической памяти, оставляя 1235 байт для локальных переменных. Максимум: 2048 байт.
+
+Скетч использует 9414 байт (30%) памяти устройства. Всего доступно 30720 байт.
+Глобальные переменные используют 813 байт (39%) динамической памяти, оставляя 1235 байт для локальных переменных. Максимум: 2048 байт.
+
+Скетч использует 9054 байт (29%) памяти устройства. Всего доступно 30720 байт.
+Глобальные переменные используют 809 байт (39%) динамической памяти, оставляя 1239 байт для локальных переменных. Максимум: 2048 байт.
 */
