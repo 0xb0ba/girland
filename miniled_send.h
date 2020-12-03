@@ -28,8 +28,8 @@
 #define ORDER1	0
 #define ORDER2	1
 #else
-#define ORDER0	1
-#define ORDER1	0
+#define ORDER0	0
+#define ORDER1	1
 #define ORDER2	2
 #endif
 

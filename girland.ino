@@ -1,7 +1,7 @@
 // число светодиодов в кольце/ленте
-#define LED_COUNT 310
+#define LED_COUNT 150
 //стартовый светодиод звезды
-#define LED_STAR_START 300
+//#define LED_STAR_START 150
 //длина звезды
 #define LED_STAR_LENGHT 10
 //пин, куда подключен DIN ленты
@@ -36,6 +36,9 @@ int SEG_LEN;
 #define OPT_MODE 1
 #define OPT_DIR  2
 #define OPT_EVEN 4
+#define OPT_HUE  8
+#define OPT_SAT  16
+#define OPT_VAL  32
 
 TStrip LEDS = TStrip(leds, LED_COUNT, LED_DT);
 
@@ -127,48 +130,50 @@ void rnd(int x) {
   leds[x].set_b(random8());
 }
 
+TLED rnd() {
+  return TLED(random8(),random8(),random8());
+}
+
 //и не очень плавная и не только цветов
 //плавная смена цветов всей ленты
-void rainbow_fade(uint8_t thisdelay, uint8_t hue, uint8_t opt) {                         //-m2-FADE ALL LEDS THROUGH HSV RAINBOW
-  uint8_t h = random8() / 16 + 1;
-  uint8_t s = random8() / 16 + 1;
-  uint8_t v = random8() / 16 + 1;
+void rainbow_fade(uint8_t del, uint8_t hue, uint8_t opt) {                         //-m2-FADE ALL LEDS THROUGH HSV RAINBOW
+  uint8_t h = random8() / 8 - 16;
+  uint8_t s = random8() / 8 - 16;
+  uint8_t v = random8() / 8 - 16;
   uint8_t sat;
   uint8_t val;
   uint8_t ss;
   uint8_t vv = 255;
   while (check()) {
-    if (opt & 1) {
+    if (opt & 1) hue += h;
+    if (opt & 2) {
       sat += s;
-      ss = triwave8(sat);
+      if (opt & 4)ss = triwave8(sat); else ss = sat;
     }
-    if (opt & 4) {
+    if (opt & 8) {
       val += v;
-      vv = triwave8(val);
+      if (opt & 16)vv = triwave8(val); else vv = val;
     }
-    if (opt & 16) hue += h;
     for (int i = 0; i < LED_COUNT; i++)
       leds[i] = CHSV(hue, ss, vv);
-    show_delay(thisdelay);
+    show_delay(del);
   }
 }
 
 // крутящаяся радуга
 // крутая плавная вращающаяся радуга
-void rainbow_loop(uint8_t thisdelay, uint8_t thishue, uint8_t opt) {                        //-m3-LOOP HSV RAINBOW
-  uint8_t thisdelay2 = random8(0, 100);
-  uint8_t h = random8(-10, 10);
-  uint8_t s = random8(-10, 10);
-  uint8_t v = random8(-10, 10);
+void rainbow_loop(uint8_t del, uint8_t hue, uint8_t opt) {                        //-m3-LOOP HSV RAINBOW
+  uint8_t del2 = random8(0, 100);
+  uint8_t h = random8() / 8 - 16;
+  uint8_t s = random8() / 8 - 16;
+  uint8_t v = random8() / 8 - 16;
   uint8_t sat;
   uint8_t val;
   uint8_t ss;
   uint8_t vv = 255;
   while (check()) {
     for (int i = 0; i < SEG_LEN; i++) {
-      if (opt & 1) {
-        thishue += h;
-      }
+      if (opt & 1) hue += h;
       if (opt & 2) {
         sat += s;
         if (opt & 4)ss = triwave8(sat); else ss = sat;
@@ -177,10 +182,10 @@ void rainbow_loop(uint8_t thisdelay, uint8_t thishue, uint8_t opt) {            
         val += v;
         if (opt & 16)vv = triwave8(val); else vv = val;
       }
-      leds[i] = CHSV(thishue, ss, vv);
-      if (opt & 32) showseg_delay(thisdelay);
+      leds[i] = CHSV(hue, ss, vv);
+      if (opt & 32) showseg_delay(del);
     }
-    showseg_delay(thisdelay2);
+    showseg_delay(del2);
   }
 }
 
@@ -300,7 +305,7 @@ void random_red(int thisdelay, uint8_t thishue, uint8_t opt) {         //QUICK '
       if (opt & 1) rnd(x);
       else leds[x] = CHSV(thishue, thissat, 255);
     } else {
-      if (opt & 2) leds[x]=0;
+      if (opt & 2) leds[x] = 0;
     }
     if (!(opt & 2)) {
       if (!(opt & 4)) ufade();
@@ -469,7 +474,7 @@ void matrix(int thisdelay, int thishue, int mmode, int dir) {                   
     if (rand > 90)
       leds[0] = CHSV(thishue, 255, 255);
     else {
-        leds[0] = 0;
+      leds[0] = 0;
     }
     if (dir) ror(SEG_LEN); else rol(SEG_LEN);
     showseg_delay(thisdelay);
@@ -505,14 +510,18 @@ void colorWipe(int thisdelay, int thishue, int mmode, int dir) {
   }
 }
 
+
+
+
+
 //---------------------------------линейный огонь-------------------------------------
 void Fire(int SpeedDelay, int Cooling, int Sparking) {
-  byte heat[LED_COUNT / 2];
+  byte heat[SEG_LEN];
   int cooldown;
   while (check()) {
     // Step 1.  Cool down every cell a little
-    for ( int i = 0; i < LED_COUNT / 2; i++) {
-      cooldown = random8(0, Cooling * 10 / LED_COUNT / 2 + 2);
+    for ( int i = 0; i < SEG_LEN; i++) {
+      cooldown = random8(0, Cooling * 10 / SEG_LEN + 2);
       if (cooldown > heat[i]) {
         heat[i] = 0;
       } else {
@@ -521,7 +530,7 @@ void Fire(int SpeedDelay, int Cooling, int Sparking) {
     }
 
     // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-    for ( int k = LED_COUNT / 2 - 1; k >= 2; k--) {
+    for ( int k = SEG_LEN - 1; k >= 2; k--) {
       heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
     }
 
@@ -533,12 +542,11 @@ void Fire(int SpeedDelay, int Cooling, int Sparking) {
     }
 
     // Step 4.  Convert heat to LED colors
-    for ( int j = 0; j < LED_COUNT / 2; j++) {
+    for ( int j = 0; j < SEG_LEN; j++) {
       setPixelHeatColor(j, heat[j]);
-      setPixelHeatColor(LED_COUNT - 1 - j, heat[j]);
     }
 
-    show_delay(SpeedDelay);
+    showseg_delay(SpeedDelay);
   }
 }
 
@@ -554,19 +562,65 @@ void setPixelHeatColor (int Pixel, byte temperature) {
 
   // figure out which third of the spectrum we're in:
   if ( t192 > 0x80) {                    // hottest
-    setPixel(Pixel, 255, 255, heatramp);
+    leds[Pixel]=TLED(255, 255, heatramp);
   } else if ( t192 > 0x40 ) {            // middle
-    setPixel(Pixel, 255, heatramp, 0);
+    leds[Pixel]=TLED(255, heatramp, 0);
   } else {                               // coolest
-    setPixel(Pixel, heatramp, 0, 0);
+    leds[Pixel]=TLED(heatramp, 0, 0);
   }
 }
 
-void setPixel(int Pixel, byte red, byte green, byte blue) {
-  leds[Pixel].set_r(red);
-  leds[Pixel].set_g(green);
-  leds[Pixel].set_b(blue);
+// ## Bouncing Balls
+void BouncingBalls(int BallCount) {
+  float Gravity = -9.81;
+  int StartHeight = 1;
+  float Height[BallCount];
+  float ImpactVelocityStart = sqrt( -2 * Gravity * StartHeight );
+  float ImpactVelocity[BallCount];
+  float TimeSinceLastBounce[BallCount];
+  int   Position[BallCount];
+  long  ClockTimeSinceLastBounce[BallCount];
+  float Dampening[BallCount];
+  TLED ballcolors[BallCount];
+
+  for (int i = 0 ; i < BallCount ; i++) {
+    ClockTimeSinceLastBounce[i] = millis();
+    Height[i] = StartHeight;
+    Position[i] = 0;
+    ImpactVelocity[i] = ImpactVelocityStart;
+    TimeSinceLastBounce[i] = 0;
+    Dampening[i] = 0.90 - float(i) / pow(BallCount, 2);
+    ballcolors[i]=rnd();
+  }
+
+  while (check()) {
+
+    for (int i = 0 ; i < BallCount ; i++) {
+      TimeSinceLastBounce[i] =  millis() - ClockTimeSinceLastBounce[i];
+      Height[i] = 0.5 * Gravity * pow( TimeSinceLastBounce[i] / 1000 , 2.0 ) + ImpactVelocity[i] * TimeSinceLastBounce[i] / 1000;
+
+      if ( Height[i] < 0 ) {
+        Height[i] = 0;
+        ImpactVelocity[i] = Dampening[i] * ImpactVelocity[i];
+        ClockTimeSinceLastBounce[i] = millis();
+
+        if ( ImpactVelocity[i] < 0.01 ) {
+          ImpactVelocity[i] = ImpactVelocityStart;
+        }
+      }
+
+      Position[i] = round( Height[i] * (SEG_LEN - 1) / StartHeight);
+
+    }
+
+    for (int i = 0 ; i < BallCount ; i++) {
+      leds[Position[i]] = ballcolors[i];
+    }
+    showseg_delay(4);
+    memset8(leds, 0, SEG_LEN * sizeof(TLED));
+  }
 }
+
 
 void fireworks(int thisdelay, int thishue, int opt) {
   int f = random8(96, 133);
@@ -692,7 +746,16 @@ void loop() {
       colorWipe(thisdelay, thishue, mmode, dir);
       break;
     case 20:
+      SEG_CNT = 2;
+      SEG_LEN = LED_COUNT / SEG_CNT;
+      SEG_DIR = 1;
       Fire(thisdelay, 55, 120);
+      break;
+    case 21:
+      SEG_CNT = 1;
+      SEG_LEN = LED_COUNT / SEG_CNT;
+      SEG_DIR = 1;
+      BouncingBalls(random8()/32+1);
       break;
     case 30:
       fireworks(thisdelay, thishue, opt);
@@ -700,15 +763,20 @@ void loop() {
     case 31:
       comet(thisdelay, thishue, opt);
       break;
+    default:
+      memset8(leds, 0, LED_COUNT * sizeof(TLED));
   }
 }
 
 /*
+  Скетч использует 10022 байт (32%) памяти устройства. Всего доступно 30720 байт.
+  Глобальные переменные используют 741 байт (36%) динамической памяти, оставляя 1307 байт для локальных переменных. Максимум: 2048 байт.
+ 
+  Скетч использует 8610 байт (28%) памяти устройства. Всего доступно 30720 байт.
+  Глобальные переменные используют 1251 байт (61%) динамической памяти, оставляя 797 байт для локальных переменных. Максимум: 2048 байт.
+
   Скетч использует 10896 байт (35%) памяти устройства. Всего доступно 30720 байт.
   Глобальные переменные используют 1321 байт (64%) динамической памяти, оставляя 727 байт для локальных переменных. Максимум: 2048 байт.
-
-  Скетч использует 9858 байт (32%) памяти устройства. Всего доступно 30720 байт.
-  Глобальные переменные используют 335 байт (16%) динамической памяти, оставляя 1713 байт для локальных переменных. Максимум: 2048 байт.
 
   Скетч использует 10834 байт (35%) памяти устройства. Всего доступно 30720 байт.
   Глобальные переменные используют 1325 байт (64%) динамической памяти, оставляя 723 байт для локальных переменных. Максимум: 2048 байт.

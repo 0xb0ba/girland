@@ -100,7 +100,7 @@ void * memset8 ( void * ptr, uint8_t val, uint16_t num ) {
     "  brcc Lsetloop_%=        \n\t"
     "  sbci %B[num], 0         \n\t"
     "  brcc Lsetloop_%=        \n\t"
-    : [num] "+r" (num)
+    : [num] "+d" (num)
     : [ptr]  "r" (ptr),
     [val]  "r" (val)
     : "memory"
