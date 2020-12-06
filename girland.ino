@@ -10,7 +10,7 @@
 #define PHOTO_SENSOR 2
 
 // максимальная яркость (0 - 255)
-#define MAX_BRIGHT 255
+#define MAX_BRIGHT 100
 // адаптивная подсветка
 #define ADAPT_LIGHT
 
@@ -46,8 +46,8 @@ uint8_t check() {
 #ifdef ADAPT_LIGHT
   int new_bright = 0x01 | map(analogRead(PHOTO_SENSOR), 1, 1023, 5, MAX_BRIGHT);   // считать показания с фоторезистора, перевести диапазон
   LEDS.setBrightness(new_bright);        // установить новую яркость
-    Serial.print("bright:");
-    Serial.println(new_bright);
+//  Serial.print("bright:");
+//  Serial.println(new_bright);
 #endif
 
   NOW = millis();
@@ -131,7 +131,7 @@ void rnd(int x) {
 }
 
 TLED rnd() {
-  return TLED(random8(),random8(),random8());
+  return TLED(random8(), random8(), random8());
 }
 
 //и не очень плавная и не только цветов
@@ -450,18 +450,16 @@ void ems_lightsSTROBE() {                  //-m26-EMERGENCY LIGHTS (STROBE LEFT/
 // уровень звука
 // случайные вспышки красного в вертикаьной плоскости
 void kitt(int thishue) {                                      //-m28-KNIGHT INDUSTIES 2000
+  TLED chsv = CHSV(thishue, 255, 255);
   while (check()) {
-    int rand = random16(1, SEG_LEN / 2);
+    int rand = random16(1, SEG_LEN);
     for (int i = 0; i < rand; i++) {
-      TLED chsv = CHSV(thishue, 255, 255);
-      leds[SEG_LEN / 2 + i] = chsv;
-      leds[SEG_LEN / 2 - i] = chsv;
+      leds[i] = chsv;
       showseg_delay(100 / rand);
     }
     int rand2 = random8(1, 50);
     for (int i = rand; i > 0; i--) {
-      leds[SEG_LEN / 2 + i] = 0;
-      leds[SEG_LEN / 2 - i] = 0;
+      leds[i] = 0;
       showseg_delay(100 / rand2);
     }
   }
@@ -509,10 +507,6 @@ void colorWipe(int thisdelay, int thishue, int mmode, int dir) {
     if (mmode)thishue = random8();
   }
 }
-
-
-
-
 
 //---------------------------------линейный огонь-------------------------------------
 void Fire(int SpeedDelay, int Cooling, int Sparking) {
@@ -562,46 +556,36 @@ void setPixelHeatColor (int Pixel, byte temperature) {
 
   // figure out which third of the spectrum we're in:
   if ( t192 > 0x80) {                    // hottest
-    leds[Pixel]=TLED(255, 255, heatramp);
+    leds[Pixel] = TLED(255, 255, heatramp);
   } else if ( t192 > 0x40 ) {            // middle
-    leds[Pixel]=TLED(255, heatramp, 0);
+    leds[Pixel] = TLED(255, heatramp, 0);
   } else {                               // coolest
-    leds[Pixel]=TLED(heatramp, 0, 0);
+    leds[Pixel] = TLED(heatramp, 0, 0);
   }
 }
 
-// ## Bouncing Balls
 void BouncingBalls(int BallCount) {
   float Gravity = -9.81;
-  int StartHeight = 1;
-  float Height[BallCount];
+  int StartHeight = 1.000000;
   float ImpactVelocityStart = sqrt( -2 * Gravity * StartHeight );
   float ImpactVelocity[BallCount];
-  float TimeSinceLastBounce[BallCount];
-  int   Position[BallCount];
   long  ClockTimeSinceLastBounce[BallCount];
-  float Dampening[BallCount];
   TLED ballcolors[BallCount];
 
   for (int i = 0 ; i < BallCount ; i++) {
     ClockTimeSinceLastBounce[i] = millis();
-    Height[i] = StartHeight;
-    Position[i] = 0;
     ImpactVelocity[i] = ImpactVelocityStart;
-    TimeSinceLastBounce[i] = 0;
-    Dampening[i] = 0.90 - float(i) / pow(BallCount, 2);
-    ballcolors[i]=rnd();
+    ballcolors[i] = rnd();
   }
 
   while (check()) {
 
     for (int i = 0 ; i < BallCount ; i++) {
-      TimeSinceLastBounce[i] =  millis() - ClockTimeSinceLastBounce[i];
-      Height[i] = 0.5 * Gravity * pow( TimeSinceLastBounce[i] / 1000 , 2.0 ) + ImpactVelocity[i] * TimeSinceLastBounce[i] / 1000;
-
-      if ( Height[i] < 0 ) {
-        Height[i] = 0;
-        ImpactVelocity[i] = Dampening[i] * ImpactVelocity[i];
+      float TimeSinceLastBounce =  (millis() - ClockTimeSinceLastBounce[i]) / 1000.0 ;
+      float Height = 0.5 * Gravity * pow(TimeSinceLastBounce, 2.0 ) + ImpactVelocity[i] * TimeSinceLastBounce;
+      if ( Height < 0 ) {
+        Height = 0;
+        ImpactVelocity[i] = ImpactVelocity[i] * (0.90 - float(i) / pow(BallCount, 2));
         ClockTimeSinceLastBounce[i] = millis();
 
         if ( ImpactVelocity[i] < 0.01 ) {
@@ -609,18 +593,13 @@ void BouncingBalls(int BallCount) {
         }
       }
 
-      Position[i] = round( Height[i] * (SEG_LEN - 1) / StartHeight);
-
+      int Position = round( Height * (LED_COUNT - 1) / StartHeight);
+      leds[Position] = ballcolors[i];
     }
-
-    for (int i = 0 ; i < BallCount ; i++) {
-      leds[Position[i]] = ballcolors[i];
-    }
-    showseg_delay(4);
-    memset8(leds, 0, SEG_LEN * sizeof(TLED));
+    show_delay(0);
+    memset8(leds, 0, LED_COUNT * sizeof(TLED));
   }
 }
-
 
 void fireworks(int thisdelay, int thishue, int opt) {
   int f = random8(96, 133);
@@ -647,6 +626,14 @@ void comet(int thisdelay, int thishue, int opt) {
   }
 }
 
+void test() {
+  rnd(0);
+  while (check()) {
+    ror(SEG_LEN);
+    showseg_delay(0);
+  }
+}
+
 void setup() {
   Serial.begin(9600);              // открыть порт для связи
   random16_set_seed(analogRead(0));
@@ -659,7 +646,7 @@ void loop() {
   Serial.println(TIME2EXIT);
   TIME2EXIT += NOW;
   uint8_t effect = random8(0, 40);
-  Serial.print("effect:");
+  Serial.print("EFFECT:");
   Serial.println(effect);
   uint8_t thisdelay = random8() / 2;
   Serial.print("delay:");
@@ -686,6 +673,7 @@ void loop() {
   }
   Serial.print("SEG_DIR:");
   Serial.println(SEG_DIR);
+  //  test();
   //  return;
   switch (effect) {
     case 0:
@@ -752,10 +740,7 @@ void loop() {
       Fire(thisdelay, 55, 120);
       break;
     case 21:
-      SEG_CNT = 1;
-      SEG_LEN = LED_COUNT / SEG_CNT;
-      SEG_DIR = 1;
-      BouncingBalls(random8()/32+1);
+      BouncingBalls(random8() / 32 + 1);
       break;
     case 30:
       fireworks(thisdelay, thishue, opt);
@@ -769,9 +754,12 @@ void loop() {
 }
 
 /*
+  Скетч использует 9514 байт (30%) памяти устройства. Всего доступно 30720 байт.
+  Глобальные переменные используют 741 байт (36%) динамической памяти, оставляя 1307 байт для локальных переменных. Максимум: 2048 байт.
+
   Скетч использует 10022 байт (32%) памяти устройства. Всего доступно 30720 байт.
   Глобальные переменные используют 741 байт (36%) динамической памяти, оставляя 1307 байт для локальных переменных. Максимум: 2048 байт.
- 
+
   Скетч использует 8610 байт (28%) памяти устройства. Всего доступно 30720 байт.
   Глобальные переменные используют 1251 байт (61%) динамической памяти, оставляя 797 байт для локальных переменных. Максимум: 2048 байт.
 
