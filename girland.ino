@@ -1,7 +1,7 @@
 // число светодиодов в кольце/ленте
-#define LED_COUNT 150
+#define LED_COUNT 310
 //стартовый светодиод звезды
-//#define LED_STAR_START 150
+#define LED_STAR_START 300
 //длина звезды
 #define LED_STAR_LENGHT 10
 //пин, куда подключен DIN ленты
@@ -46,8 +46,8 @@ uint8_t check() {
 #ifdef ADAPT_LIGHT
   int new_bright = 0x01 | map(analogRead(PHOTO_SENSOR), 1, 1023, 5, MAX_BRIGHT);   // считать показания с фоторезистора, перевести диапазон
   LEDS.setBrightness(new_bright);        // установить новую яркость
-//  Serial.print("bright:");
-//  Serial.println(new_bright);
+  //  Serial.print("bright:");
+  //  Serial.println(new_bright);
 #endif
 
   NOW = millis();
@@ -110,6 +110,16 @@ void rol(int l) {
   memmove(&leds[0], &leds[1], l * sizeof(TLED));
 }
 
+void shr(int l) {
+  memmove(&leds[1], &leds[0], l * sizeof(TLED));
+  leds[0] = 0;
+}
+
+void shl(int i, int l) {
+  memmove(&leds[i], &leds[i + 1], l * sizeof(TLED));
+  leds[i + l] = 0;
+}
+
 void fade(int f) {
   for ( int i = 0; i < LED_COUNT; i++)
     leds[i].nscale8(f);
@@ -122,6 +132,19 @@ void ufade() {
     leds[i] = t / 2 + leds[i] + leds[i + 1] / 2;
     t = tt;
   }
+}
+
+void fill(int start, int len, TLED color) {
+  for (int i = start; i < start + len; i++) {
+    leds[i] = color;
+  }
+}
+
+int cmp(TLED c1, TLED c2, int d) {
+  if (abs(c1.get_r() - c2.get_r() > d))return 0;
+  if (abs(c1.get_g() - c2.get_g() > d))return 0;
+  if (abs(c1.get_b() - c2.get_b() > d))return 0;
+  return 1;
 }
 
 void rnd(int x) {
@@ -424,24 +447,40 @@ void rainbow_vertical(int thisdelay) {                        //-m23-RAINBOW 'UP
 }
 
 // полицейская мигалка
-void ems_lightsSTROBE() {                  //-m26-EMERGENCY LIGHTS (STROBE LEFT/RIGHT)
+void ems_lightsSTROBE(uint8_t opt) {                  //-m26-EMERGENCY LIGHTS (STROBE LEFT/RIGHT)
+  TLED c11 = TLED(255, 0, 0), c12 = TLED(0, 0, 0), c21 = TLED(0, 0, 255), c22 = TLED(0, 0, 0);
+  uint8_t f1 = opt & 2;
+  uint8_t f2 = opt & 4;
+  if (opt & 1) {
+    f1 = 0;
+    f2 = 0;
+  } else {
+    c11 = rnd();
+    c21 = rnd();
+    if (opt & 8) {
+      c12 = rnd();
+      c22 = rnd();
+    }
+  }
   while (check()) {
+    if (f1) {
+      c11 = rnd();
+      c21 = rnd();
+    }
+    if (f2) {
+      c12 = rnd();
+      c22 = rnd();
+    }
     for (uint8_t x = 0; x < 5; x++) {
-      for (int i = 0; i < SEG_LEN / 2; i++) {
-        //        leds[i].r = 0;
-        leds[i].set_b(255);
-      }
+      fill(0, SEG_LEN / 2, c11);
       showseg_delay(25);
-      memset8(leds, 0, SEG_LEN * sizeof(TLED));
+      fill(0, SEG_LEN / 2, c12);
       showseg_delay(25);
     }
     for (uint8_t x = 0; x < 5; x++) {
-      for (int i = SEG_LEN / 2; i < SEG_LEN; i++) {
-        leds[i].set_r(255);
-        //        leds[i].b = 0;
-      }
+      fill(SEG_LEN / 2, (SEG_LEN + 1) / 2, c21);
       showseg_delay(25);
-      memset8(leds, 0, SEG_LEN * sizeof(TLED));
+      fill(SEG_LEN / 2, (SEG_LEN + 1) / 2, c22);
       showseg_delay(25);
     }
   }
@@ -626,11 +665,37 @@ void comet(int thisdelay, int thishue, int opt) {
   }
 }
 
-void test() {
-  rnd(0);
-  while (check()) {
-    ror(SEG_LEN);
-    showseg_delay(0);
+void boba1(int del, int opt) {
+  TLED c = rnd();
+  int dir = opt & 2;
+  int tet = (opt & 4) && (opt & 1);
+  while (1) {
+    for (int i = SEG_LEN - 1; i > 0; i--) {
+      if (opt & 1) c = rnd();
+
+      uint8_t q;
+      if (dir) {
+        leds[0] = c;
+        q = i + 1;
+      }
+      else {
+        leds[SEG_LEN - 1] = c;
+        q = SEG_LEN - 1 - i - 1;
+      }
+
+      for (int ii = 0; ii < i; ii++) {
+        showseg_delay(del);
+        if (dir) shr(i);
+        else shl(SEG_LEN - 1 - i, i);
+      }
+
+      if (tet && cmp(c, leds[q], 100)) {
+        i += 2;
+        if (i > SEG_LEN - 1)i = SEG_LEN - 1;
+      }
+      if (!check())return;
+    }
+    if (opt & 4) memset8(leds, 0, SEG_LEN * sizeof(TLED));
   }
 }
 
@@ -641,11 +706,11 @@ void setup() {
 }
 
 void loop() {
-  TIME2EXIT = random8() * 128;
+  TIME2EXIT = random8() * 256u;
   Serial.print("duration:");
   Serial.println(TIME2EXIT);
   TIME2EXIT += NOW;
-  uint8_t effect = random8(0, 40);
+  uint8_t effect = random8(0, 25);
   Serial.print("EFFECT:");
   Serial.println(effect);
   uint8_t thisdelay = random8() / 2;
@@ -722,7 +787,7 @@ void loop() {
       rainbow_vertical(thisdelay);
       break;
     case 16:
-      ems_lightsSTROBE();
+      ems_lightsSTROBE(opt);
       break;
     case 17:
       kitt(thishue);
@@ -733,27 +798,60 @@ void loop() {
     case 19:
       colorWipe(thisdelay, thishue, mmode, dir);
       break;
-    case 20:
-      SEG_CNT = 2;
-      SEG_LEN = LED_COUNT / SEG_CNT;
-      SEG_DIR = 1;
-      Fire(thisdelay, 55, 120);
+    case 20: {
+        SEG_CNT = 2;
+        SEG_LEN = LED_COUNT / SEG_CNT;
+        SEG_DIR = 1;
+        Fire(thisdelay, 55, 120);
+      }
       break;
     case 21:
       BouncingBalls(random8() / 32 + 1);
       break;
-    case 30:
+    case 22:
       fireworks(thisdelay, thishue, opt);
       break;
-    case 31:
+    case 23:
       comet(thisdelay, thishue, opt);
       break;
-    default:
+    case 24:
+      boba1(thisdelay / 4, opt);
+      break;
+  }
+
+  switch (random8() / 32) {
+    case 0:
       memset8(leds, 0, LED_COUNT * sizeof(TLED));
+      break;
+    case 1: {
+        int f = random8() / 2 + 128;
+        for (int i = 0; i < f / 16; i++) {
+          fade(f);
+          show_delay(SEG_CNT);
+        }
+      }
+      break;
+    case 2: {
+        for (int i = 0; i < LED_COUNT; i++) {
+          shr(LED_COUNT - 1);
+          show_delay(SEG_CNT);
+        }
+      }
+      break;
+    case 3: {
+        for (int i = 0; i < LED_COUNT; i++) {
+          shl(0, LED_COUNT - 1);
+          show_delay(SEG_CNT);
+        }
+      }
+      break;
   }
 }
 
 /*
+  Скетч использует 10282 байт (35%) памяти устройства. Всего доступно 28672 байт.
+  Глобальные переменные используют 1243 байт (60%) динамической памяти, оставляя 805 байт для локальных переменных. Максимум: 2048 байт.
+
   Скетч использует 9514 байт (30%) памяти устройства. Всего доступно 30720 байт.
   Глобальные переменные используют 741 байт (36%) динамической памяти, оставляя 1307 байт для локальных переменных. Максимум: 2048 байт.
 
