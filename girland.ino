@@ -174,19 +174,6 @@ void showseg_delay(uint8_t delay_ms) {
       memcpy(&leds[SEG_LEN * n], &leds[0], SEG_LEN * sizeof(TLED));
     }
   }
-  // Если LED_COUNT не делится на SEG_CNT, добиваем хвост началом следующего
-  // сегмента: так не остаётся мусора от прошлого кадра и «звезда» не гаснет.
-  uint16_t covered = (uint16_t)SEG_LEN * SEG_CNT;
-  uint16_t tail = (uint16_t)LED_COUNT - covered;
-  if (tail) {
-    if (((SEG_CNT / SEG_DIR) & 1) && tail <= (uint16_t)SEG_LEN) {
-      // Зеркальный сегмент: первые tail пикселей — это перевёрнутые последние
-      // tail пикселей сегмента 0.
-      swap(&leds[covered], &leds[(uint16_t)(SEG_LEN - tail)], tail);
-    } else {
-      memcpy(&leds[covered], &leds[0], tail * sizeof(TLED));
-    }
-  }
   show();
   fast_delay_ms(delay_ms);
   wdt_reset();
@@ -3272,7 +3259,11 @@ void loop() {
   opt = random8();
   mmode = opt & OPT_MODE;
   dir = opt & OPT_DIR;
-  SEG_CNT = (random8() & 7) + 1;
+  while (1) {
+    SEG_CNT = (random8() & 7) + 1;
+    if (!(LED_COUNT % SEG_CNT))
+      break;
+  }
   SEG_LEN = LED_COUNT / SEG_CNT;
   while (1) {
     SEG_DIR = random8(1, SEG_CNT + 1);
