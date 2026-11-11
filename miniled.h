@@ -122,7 +122,7 @@ inline TLED blend(const TLED &c1, const TLED &c2, uint8_t amountOfC2) {
 class TStrip {
   TLED *LEDbuffer;
   int _numLEDs;
-  uint8_t _bright = 255;
+  uint8_t _bright = 5;
 
   const volatile uint8_t *ws2812_port;
   volatile uint8_t *ws2812_port_reg;

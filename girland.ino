@@ -3159,15 +3159,18 @@ void setup() {
   uart_init(); // открыть порт для связи (высокая скорость 115200)
 
 #ifdef PHOTO_GND_PIN
-  pinMode(PHOTO_GND_PIN, OUTPUT);
-  digitalWrite(PHOTO_GND_PIN, LOW); // формируем землю (0V) на пине датчика
+  // Прямое управление регистрами PORTC (A1=PC1, A3=PC3) исключает wiring_digital
+  // и экономит ~250 байт Flash
+  DDRC |= (1 << (PHOTO_GND_PIN - 14));
+  PORTC &= ~(1 << (PHOTO_GND_PIN - 14)); // формируем землю (0V) на пине A1
 #endif
 #ifdef PHOTO_VCC_PIN
-  pinMode(PHOTO_VCC_PIN, OUTPUT);
-  digitalWrite(PHOTO_VCC_PIN, HIGH); // формируем питание (+5V) на пине датчика
+  DDRC |= (1 << (PHOTO_VCC_PIN - 14));
+  PORTC |= (1 << (PHOTO_VCC_PIN - 14)); // формируем питание (+5V) на пине A3
 #endif
 #if PHOTO_INTERNAL_PULLUP
-  pinMode(PHOTO_SENSOR, INPUT_PULLUP); // подтяжка для 2-пинового фоторезистора
+  DDRC &= ~(1 << (PHOTO_SENSOR - 14));
+  PORTC |= (1 << (PHOTO_SENSOR - 14)); // внутренняя подтяжка на пине A2
 #endif
 
 #ifndef ADAPT_LIGHT
