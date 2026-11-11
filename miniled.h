@@ -75,7 +75,9 @@ struct TLED {
   bool is_on() const { return rr || gg || bb; }
 #endif //#elif (COLOR_DEBTH == 3)
 
-  TLED() {}
+  // По умолчанию не инициализируем: глобальный буфер и так попадает в .bss,
+  // а все локальные TLED инициализируются перед использованием.
+  TLED() = default;
 
   TLED(uint8_t ir, uint8_t ig, uint8_t ib) {
     set_r(ir);
@@ -98,17 +100,19 @@ struct TLED {
   }
 };
 
-TLED operator/(const TLED &led, uint8_t d) {
+inline TLED operator/(const TLED &led, uint8_t d) {
+  if (!d)
+    return TLED(0, 0, 0);
   return TLED(led.get_r() / d, led.get_g() / d, led.get_b() / d);
-};
+}
 
-TLED operator+(const TLED &led1, const TLED &led2) {
+inline TLED operator+(const TLED &led1, const TLED &led2) {
   return TLED(qadd8(led1.get_r(), led2.get_r()),
               qadd8(led1.get_g(), led2.get_g()),
               qadd8(led1.get_b(), led2.get_b()));
 };
 
-TLED blend(const TLED &c1, const TLED &c2, uint8_t amountOfC2) {
+inline TLED blend(const TLED &c1, const TLED &c2, uint8_t amountOfC2) {
   return TLED(
       scale8(c1.get_r(), 255 - amountOfC2) + scale8(c2.get_r(), amountOfC2),
       scale8(c1.get_g(), 255 - amountOfC2) + scale8(c2.get_g(), amountOfC2),
@@ -118,7 +122,7 @@ TLED blend(const TLED &c1, const TLED &c2, uint8_t amountOfC2) {
 class TStrip {
   TLED *LEDbuffer;
   int _numLEDs;
-  uint8_t _bright = 0;
+  uint8_t _bright = 255;
 
   const volatile uint8_t *ws2812_port;
   volatile uint8_t *ws2812_port_reg;
@@ -144,7 +148,7 @@ public:
   void setBrightness(uint8_t br) { _bright = br; };
 };
 
-TLED CHSV(uint8_t hue, uint8_t saturation, uint8_t value) {
+inline TLED CHSV(uint8_t hue, uint8_t saturation, uint8_t value) {
   TLED rgb;
 
   hue = scale8(hue, 191);
