@@ -1,15 +1,7 @@
 // число светодиодов в кольце/ленте
 #define LED_COUNT 160
-// общее число доступных эффектов вычисляется по спискам EFFECT_LIST_* ниже
 // длина верхушки/звезды на конце гирлянды (0 или закомментировать, если звезды нет)
 #define LED_STAR_LENGTH 10
-
-#if defined(LED_STAR_LENGTH) && (LED_STAR_LENGTH > 0)
-// стартовый светодиод звезды вычисляется автоматически в конце ленты
-#define LED_STAR_START ((uint16_t)(LED_COUNT - (LED_STAR_LENGTH)))
-static_assert(LED_STAR_LENGTH <= LED_COUNT,
-              "LED_STAR_LENGTH exceeds LED_COUNT!");
-#endif
 //пин, куда подключен DIN ленты
 #define LED_DT 13
 
@@ -50,9 +42,17 @@ static_assert(LED_STAR_LENGTH <= LED_COUNT,
 
 #define COLOR_DEBTH 3
 #define ORDER_GRB
+
 #include "miniled.h"
 #include <avr/wdt.h>
 #include <util/delay_basic.h>
+
+#if defined(LED_STAR_LENGTH) && (LED_STAR_LENGTH > 0)
+// стартовый светодиод звезды вычисляется автоматически в конце ленты
+#define LED_STAR_START ((uint16_t)(LED_COUNT - (LED_STAR_LENGTH)))
+static_assert(LED_STAR_LENGTH <= LED_COUNT,
+              "LED_STAR_LENGTH exceeds LED_COUNT!");
+#endif
 
 static void fast_delay_ms(uint8_t ms) {
   while (ms--) {
