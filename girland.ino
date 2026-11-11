@@ -1,13 +1,14 @@
 // число светодиодов в кольце/ленте
 #define LED_COUNT 160
 // общее число доступных эффектов вычисляется по спискам EFFECT_LIST_* ниже
-//стартовый светодиод звезды
-#define LED_STAR_START 150
-//длина звезды
+// длина верхушки/звезды на конце гирлянды (0 или закомментировать, если звезды нет)
 #define LED_STAR_LENGTH 10
-#ifdef LED_STAR_START
-static_assert(LED_STAR_START + LED_STAR_LENGTH <= LED_COUNT,
-              "LED_STAR_START + LED_STAR_LENGTH exceeds LED_COUNT!");
+
+#if defined(LED_STAR_LENGTH) && (LED_STAR_LENGTH > 0)
+// стартовый светодиод звезды вычисляется автоматически в конце ленты
+#define LED_STAR_START ((uint16_t)(LED_COUNT - (LED_STAR_LENGTH)))
+static_assert(LED_STAR_LENGTH <= LED_COUNT,
+              "LED_STAR_LENGTH exceeds LED_COUNT!");
 #endif
 //пин, куда подключен DIN ленты
 #define LED_DT 13
